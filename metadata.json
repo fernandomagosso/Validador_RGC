@@ -1,0 +1,5 @@
+{
+  "name": "Validador RGC",
+  "description": "Aplicativo que facilitar o dia dia para o preenchimento dos dados em CSV e validação no word",
+  "requestFramePermissions": []
+}
