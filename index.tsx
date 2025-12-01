@@ -7,7 +7,7 @@ import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 import Papa from 'papaparse';
 
-// Fix for "Unexpected token" error with declare
+// Access mammoth from the global window object (loaded via script tag)
 const mammoth = (window as any).mammoth;
 
 // --- TypeScript Interfaces ---
