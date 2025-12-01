@@ -8,7 +8,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import Papa from 'papaparse';
 
 // Access mammoth from the global window object (loaded via script tag)
-const mammoth = (window as any).mammoth;
+// using bracket notation to be safe for both JS and TS parsers in Babel
+const mammoth = window["mammoth"];
 
 // --- TypeScript Interfaces ---
 interface CSVRow {
@@ -677,5 +678,5 @@ const App = () => {
   );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('root')!);
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
