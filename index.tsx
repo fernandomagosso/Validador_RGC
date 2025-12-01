@@ -65,6 +65,19 @@ const PLACEHOLDER_TO_CSV_HEADER_MAP = {
     'servicos_inteligentes': 'SERVICOS_INTELIGENTES_INCLUSOS',
 };
 
+const DEFAULT_AI_INSTRUCTIONS = `
+Por favor, atue como um assistente de validação de documentos para uma empresa de telecomunicações.
+Analise o seguinte conjunto de dados de um plano de serviço e verifique se há erros, inconsistências ou informações faltando, com base em boas práticas e lógica comercial.
+Para cada problema encontrado, identifique o campo (a chave do JSON) onde o erro ocorreu.
+Se nenhum erro for encontrado em todo o registro, retorne um array vazio [].
+
+Exemplos de validação:
+- O campo 'preco' deve ser um número válido.
+- O 'intervalo_vigencia' deve ser um período de tempo lógico.
+- A 'taxa_download' deve ser consistente com o 'nome_comercial' do plano.
+`;
+
+
 // --- Child Components ---
 const StaticPreviewLayout = () => (
     <div className="static-preview-wrapper">
@@ -142,7 +155,10 @@ interface DynamicPreviewProps {
     isValidating: boolean;
 }
 
-const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
+const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recordIndex, map, feedbackItems, isValidating }) => {
+    // FIX: Handle default value for feedbackItems internally to avoid potential `never[]` type inference issues.
+    const currentFeedbackItems = feedbackItems || [];
+
     // Helper to just get the raw value from the record
     const getValue = (placeholderKey: string) => {
         // Special handling for the validity period
@@ -152,6 +168,8 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
             if (startDate && endDate) return `De ${startDate} até ${endDate}`;
             if (startDate) return `A partir de ${startDate}`;
             if (endDate) return `Até ${endDate}`;
+            // FIX: Ensure a string is always returned.
+            return '';
         }
         // General case
         const csvHeader = map[placeholderKey];
@@ -161,10 +179,10 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
     // Helper to wrap a value in a feedback span if needed (for React rendering in the header)
     const renderWithFeedback = (placeholderKey: string) => {
         const value = getValue(placeholderKey);
-        const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
+        const feedbackForItem = currentFeedbackItems.find(f => f.field === placeholderKey);
         if (feedbackForItem) {
-            // FIX: Use String() to ensure the value is treated as a string, resolving incorrect type inference.
-            const escapedFeedback = String(feedbackForItem.feedback).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+            // FIX: Corrected type inference makes String() unnecessary and resolves the 'never' type error.
+            const escapedFeedback = feedbackForItem.feedback.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
             return (
                 <span className={`has-feedback feedback-${feedbackForItem.severity}`} data-feedback={escapedFeedback}>
                     {value}
@@ -183,12 +201,12 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
         placeholders.forEach(placeholderWithBraces => {
             const placeholderKey = placeholderWithBraces.replace(/[{}]/g, '').trim();
             const value = getValue(placeholderKey);
-            const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
+            const feedbackForItem = currentFeedbackItems.find(f => f.field === placeholderKey);
             let replacement = value;
 
             if (feedbackForItem) {
-                // FIX: Use String() to ensure the value is treated as a string, resolving incorrect type inference.
-                const escapedFeedback = String(feedbackForItem.feedback).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+                // FIX: Corrected type inference makes String() unnecessary and resolves the 'never' type error.
+                const escapedFeedback = feedbackForItem.feedback.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
                 replacement = `<span class="has-feedback feedback-${feedbackForItem.severity}" data-feedback="${escapedFeedback}">${value}</span>`;
             }
             
@@ -199,7 +217,7 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
         return replacedHtml;
     };
     
-    const generalFeedback = feedbackItems.find(f => f.field === 'general');
+    const generalFeedback = currentFeedbackItems.find(f => f.field === 'general');
 
     return (
         <div className="preview-record-wrapper" id={`record-preview-${recordIndex}`}>
@@ -243,6 +261,51 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
     );
 };
 
+interface InstructionModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (newInstructions: string) => void;
+    initialInstructions: string;
+}
+
+const InstructionModal: React.FC<InstructionModalProps> = ({ isOpen, onClose, onSave, initialInstructions }) => {
+    const [instructions, setInstructions] = useState(initialInstructions);
+
+    useEffect(() => {
+        setInstructions(initialInstructions);
+    }, [initialInstructions, isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSave = () => {
+        onSave(instructions);
+        onClose();
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>Ajustar Instruções de Validação da IA</h3>
+                    <button className="close-btn" onClick={onClose}>&times;</button>
+                </div>
+                <div className="modal-content">
+                    <p>Forneça as diretrizes que a IA deve seguir ao validar os registros. Seja claro e específico.</p>
+                    <textarea
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                        rows={15}
+                    ></textarea>
+                </div>
+                <div className="modal-footer">
+                    <button className="btn" onClick={onClose}>Cancelar</button>
+                    <button className="btn btn-primary" onClick={handleSave}>Salvar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- Main App Component ---
 const App = () => {
@@ -262,6 +325,8 @@ const App = () => {
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredAnatelCode, setFilteredAnatelCode] = useState<string>('');
+  const [aiInstructions, setAiInstructions] = useState(DEFAULT_AI_INSTRUCTIONS);
+  const [isInstructionModalOpen, setIsInstructionModalOpen] = useState(false);
 
 
   // --- Resizing Logic State ---
@@ -435,15 +500,7 @@ const App = () => {
 
       try {
           const prompt = `
-            Por favor, atue como um assistente de validação de documentos para uma empresa de telecomunicações.
-            Analise o seguinte conjunto de dados de um plano de serviço e verifique se há erros, inconsistências ou informações faltando, com base em boas práticas e lógica comercial.
-            Para cada problema encontrado, identifique o campo (a chave do JSON) onde o erro ocorreu.
-            Se nenhum erro for encontrado em todo o registro, retorne um array vazio [].
-
-            Exemplos de validação:
-            - O campo 'preco' deve ser um número válido.
-            - O 'intervalo_vigencia' deve ser um período de tempo lógico.
-            - A 'taxa_download' deve ser consistente com o 'nome_comercial' do plano.
+            ${aiInstructions}
 
             Dados para análise:
             ---
@@ -548,6 +605,13 @@ const App = () => {
         accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       />
 
+      <InstructionModal
+        isOpen={isInstructionModalOpen}
+        onClose={() => setIsInstructionModalOpen(false)}
+        onSave={setAiInstructions}
+        initialInstructions={aiInstructions}
+      />
+
       <header>
         <h1>Validador de Documentos com IA</h1>
         <div className="header-controls">
@@ -559,6 +623,13 @@ const App = () => {
               onClick={triggerTemplateUpload}
               disabled={!csvData || isTemplateLoading}>
               {isTemplateLoading ? "Carregando..." : "Carregar Template (.docx)"}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setIsInstructionModalOpen(true)}
+              disabled={!csvData}
+              title="Ajustar instruções de validação da IA">
+              Ajustar Instruções IA
             </button>
             <button
               className="btn btn-secondary"
