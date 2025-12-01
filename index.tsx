@@ -7,7 +7,8 @@ import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 import Papa from 'papaparse';
 
-declare const mammoth: any;
+// Fix for "Unexpected token" error with declare
+const mammoth = (window as any).mammoth;
 
 // --- TypeScript Interfaces ---
 interface CSVRow {
@@ -132,10 +133,18 @@ const StaticPreviewLayout = () => (
     </div>
 );
 
+interface DynamicPreviewProps {
+    template: string;
+    record: CSVRow;
+    recordIndex: number;
+    map: { [key: string]: string };
+    feedbackItems?: AIFeedbackItem[];
+    isValidating: boolean;
+}
 
-const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
+const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
     // Helper to just get the raw value from the record
-    const getValue = (placeholderKey) => {
+    const getValue = (placeholderKey: string) => {
         // Special handling for the validity period
         if (placeholderKey === 'intervalo_vigencia') {
             const startDate = record[map['dt_inicio_vigencia']] || '';
@@ -150,7 +159,7 @@ const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = []
     };
 
     // Helper to wrap a value in a feedback span if needed (for React rendering in the header)
-    const renderWithFeedback = (placeholderKey) => {
+    const renderWithFeedback = (placeholderKey: string) => {
         const value = getValue(placeholderKey);
         const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
         if (feedbackForItem) {
@@ -241,8 +250,8 @@ const App = () => {
   const templateInputRef = useRef<HTMLInputElement | null>(null);
 
   // --- State Management ---
-  const [csvData, setCsvData] = useState < CSVData | null > (null);
-  const [selectedColumnIndex, setSelectedColumnIndex] = useState < number | null > (null);
+  const [csvData, setCsvData] = useState<CSVData | null>(null);
+  const [selectedColumnIndex, setSelectedColumnIndex] = useState<number | null>(null);
   const [aiFeedbacks, setAiFeedbacks] = useState<{ [recordIndex: number]: AIFeedbackItem[] }>({});
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [validatingRecordIndex, setValidatingRecordIndex] = useState<number | null>(null);
@@ -256,7 +265,7 @@ const App = () => {
   // --- Resizing Logic State ---
   const [isResizing, setIsResizing] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(500);
-  const mainContainerRef = useRef < HTMLElement | null > (null);
+  const mainContainerRef = useRef<HTMLElement | null>(null);
 
   // --- Derived State ---
   const anatelCodes = useMemo(() => {
@@ -281,7 +290,7 @@ const App = () => {
   }, [csvData, filteredAnatelCode]);
 
   // --- Resizing Logic Effect ---
-  const handleMouseMove = useCallback((e) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isResizing && mainContainerRef.current) {
       const containerRect = mainContainerRef.current.getBoundingClientRect();
       let newWidth = e.clientX - containerRect.left;
@@ -313,7 +322,7 @@ const App = () => {
 
 
   // --- Event Handlers ---
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
   };
@@ -333,10 +342,10 @@ const App = () => {
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: (results) => {
+        complete: (results: any) => {
             const headers = results.meta.fields || [];
             const rows = (results.data as CSVRow[]).filter(row =>
-                headers.some(header => row[header] && String(row[header]).trim() !== '')
+                headers.some((header: string) => row[header] && String(row[header]).trim() !== '')
             );
             
             setCsvData({ headers, rows });
@@ -350,7 +359,7 @@ const App = () => {
                 setSelectedColumnIndex(null);
             }
         },
-        error: (error) => {
+        error: (error: any) => {
             console.error("Error parsing CSV file:", error);
             alert("Erro ao ler o arquivo CSV. Verifique o formato do arquivo.");
         },
@@ -386,7 +395,7 @@ const App = () => {
     }
   };
 
-  const handleCellEdit = (rowIndex, header, value) => {
+  const handleCellEdit = (rowIndex: number, header: string, value: string) => {
     if (!csvData) return;
     
     const updatedRows = [...csvData.rows];
@@ -396,7 +405,7 @@ const App = () => {
   };
 
 
-  const handlePreview = useCallback((columnIndex) => {
+  const handlePreview = useCallback((columnIndex: number) => {
       const element = document.getElementById(`record-preview-${columnIndex}`);
       if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -416,9 +425,9 @@ const App = () => {
       setAiFeedbacks(prev => ({ ...prev, [selectedColumnIndex]: [] }));
 
       const recordToValidate = csvData.rows[selectedColumnIndex];
-      const recordForAI = {};
+      const recordForAI: any = {};
       Object.keys(PLACEHOLDER_TO_CSV_HEADER_MAP).forEach(placeholderKey => {
-          const csvHeader = PLACEHOLDER_TO_CSV_HEADER_MAP[placeholderKey];
+          const csvHeader = PLACEHOLDER_TO_CSV_HEADER_MAP[placeholderKey as keyof typeof PLACEHOLDER_TO_CSV_HEADER_MAP];
           recordForAI[placeholderKey] = recordToValidate[csvHeader] || '';
       });
 
@@ -469,7 +478,7 @@ const App = () => {
             }
         });
           
-          const feedbackItems: AIFeedbackItem[] = JSON.parse(response.text);
+          const feedbackItems: AIFeedbackItem[] = JSON.parse(response.text as string);
           if (feedbackItems.length === 0) {
               const successFeedback: AIFeedbackItem[] = [{
                   field: "general",
@@ -668,5 +677,5 @@ const App = () => {
   );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(<App />);
