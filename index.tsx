@@ -53,7 +53,6 @@ const PLACEHOLDER_TO_CSV_HEADER_MAP = {
     'reajuste': 'REAJUSTE',
     'periodo_fidelizacao': 'PERIODO_FIDELIZACAO',
     'multa_rescisao_antecipada': 'MULTA_RESCISAO_ANTECIPADA',
-    'modalidade_contratação': 'MODALIDADE_CONTRATACAO',
     'modalidade_contratacao': 'MODALIDADE_CONTRATACAO',
     'condicoes_pagamento': 'CONDICOES_PAGAMENTO',
     'educacao_consumo': 'EDUCACAO_CONSUMO',
@@ -164,7 +163,8 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
         const value = getValue(placeholderKey);
         const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
         if (feedbackForItem) {
-            const escapedFeedback = feedbackForItem.feedback.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+            // FIX: Use String() to ensure the value is treated as a string, resolving incorrect type inference.
+            const escapedFeedback = String(feedbackForItem.feedback).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
             return (
                 <span className={`has-feedback feedback-${feedbackForItem.severity}`} data-feedback={escapedFeedback}>
                     {value}
@@ -187,7 +187,8 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
             let replacement = value;
 
             if (feedbackForItem) {
-                const escapedFeedback = feedbackForItem.feedback.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+                // FIX: Use String() to ensure the value is treated as a string, resolving incorrect type inference.
+                const escapedFeedback = String(feedbackForItem.feedback).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
                 replacement = `<span class="has-feedback feedback-${feedbackForItem.severity}" data-feedback="${escapedFeedback}">${value}</span>`;
             }
             
@@ -479,7 +480,12 @@ const App = () => {
             }
         });
           
-          const feedbackItems: AIFeedbackItem[] = JSON.parse(response.text as string);
+          const responseText = response.text;
+          if (!responseText) {
+            throw new Error("AI response was empty and could not be parsed.");
+          }
+          const feedbackItems: AIFeedbackItem[] = JSON.parse(responseText);
+
           if (feedbackItems.length === 0) {
               const successFeedback: AIFeedbackItem[] = [{
                   field: "general",
@@ -678,5 +684,10 @@ const App = () => {
   );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<App />);
+} else {
+    console.error("Target container 'root' not found in the DOM.");
+}
