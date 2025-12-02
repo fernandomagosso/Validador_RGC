@@ -509,10 +509,6 @@ header h1 {
     max-height: 90vh;
 }
 
-.modal-large {
-    max-width: 900px;
-}
-
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -601,7 +597,7 @@ header h1 {
     text-decoration: underline;
 }
 
-/* --- Column Mapping Modal --- */
+/* --- Template Generation / Mapping Modal --- */
 .mapping-intro {
     text-align: center;
     padding: 1rem;
@@ -613,33 +609,6 @@ header h1 {
     justify-content: center;
     padding: 2rem;
     gap: 1rem;
-}
-.mapping-table-container {
-    width: 100%;
-}
-.mapping-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.mapping-table th, .mapping-table td {
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    text-align: left;
-}
-.mapping-table th {
-    background-color: #3a3a3a;
-}
-.mapping-table select {
-    width: 100%;
-    background-color: var(--background-color);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    padding: 0.5rem;
-    border-radius: 4px;
-}
-.mapping-table select:focus {
-    outline: none;
-    border-color: var(--secondary-color);
 }
 
 /* --- Toast Notification Styles --- */

@@ -6,7 +6,7 @@
 // It's standard JavaScript that runs in any modern browser without needing Babel.
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import Papa from 'papaparse';
 
 const mammoth = window["mammoth"];
@@ -50,22 +50,19 @@ const PLACEHOLDER_TO_CSV_HEADER_MAP = {
 };
 
 const DEFAULT_AI_INSTRUCTIONS = `
-Por favor, atue como um assistente de validação de documentos para uma empresa de telecomunicações.
-Analise o seguinte conjunto de dados de um plano de serviço e verifique se há erros, inconsistências ou informações faltando, com base em boas práticas e lógica comercial.
+Por favor, atue como um assistente de validação de dados.
+Analise o seguinte conjunto de dados de um registro e verifique se há erros, inconsistências ou informações faltando, com base em boas práticas e lógica comercial.
 Para cada problema encontrado, identifique o campo (a chave do JSON) onde o erro ocorreu.
-Se nenhum erro for encontrado em todo o registro, retorne um array vazio [].
-
-Exemplos de validação:
-- O campo 'preco' deve ser um número válido.
-- O 'intervalo_vigencia' deve ser um período de tempo lógico.
-- A 'taxa_download' deve ser consistente com o 'nome_comercial' do plano.
+Se nenhum erro for encontrado, retorne um array vazio [].
 `;
 
 // --- Child Components ---
 const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
     const getValue = (placeholderKey) => {
         if (!map) return '';
-        if (placeholderKey === 'intervalo_vigencia') {
+        const csvHeader = map[placeholderKey];
+        // Handle special composite fields if they exist in the current mapping
+        if (placeholderKey === 'intervalo_vigencia' && map['dt_inicio_vigencia'] && map['dt_fim_vigencia']) {
             const startDate = record[map['dt_inicio_vigencia']] || '';
             const endDate = record[map['dt_fim_vigencia']] || '';
             if (startDate && endDate) return `De ${startDate} até ${endDate}`;
@@ -73,7 +70,6 @@ const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = []
             if (endDate) return `Até ${endDate}`;
             return '';
         }
-        const csvHeader = map[placeholderKey];
         return record[csvHeader] || '';
     };
 
@@ -213,83 +209,32 @@ const Toast = ({ message, type, onDismiss }) => {
     );
 };
 
-const ColumnMappingModal = ({ isOpen, onClose, onApply, onSuggest, aiSuggestedMap, csvHeaders, isSuggesting }) => {
-    const [userMap, setUserMap] = useState(null);
-
-    useEffect(() => {
-        if (aiSuggestedMap) {
-            setUserMap(aiSuggestedMap);
-        }
-    }, [aiSuggestedMap]);
-
+const TemplateGenerationModal = ({ isOpen, onClose, onGenerate, isGenerating }) => {
     if (!isOpen) return null;
-
-    const handleSelectChange = (systemField, selectedCsvHeader) => {
-        setUserMap(prev => ({ ...prev, [systemField]: selectedCsvHeader === 'null' ? null : selectedCsvHeader }));
-    };
-    
-    const handleApply = () => {
-        const finalMap = {};
-        Object.keys(userMap).forEach(key => {
-            if(userMap[key]) {
-                finalMap[key] = userMap[key];
-            }
-        });
-        onApply(finalMap);
-    };
 
     return (
         React.createElement("div", { className: "modal-overlay" },
-            React.createElement("div", { className: "modal modal-large", onClick: (e) => e.stopPropagation() },
+            React.createElement("div", { className: "modal", onClick: e => e.stopPropagation() },
                 React.createElement("div", { className: "modal-header" },
-                    React.createElement("h3", null, "Mapeamento de Colunas com IA"),
-                    React.createElement("button", { className: "close-btn", onClick: onClose }, "\u00D7")
+                    React.createElement("h3", null, "Gerador de Template com IA"),
+                     !isGenerating && React.createElement("button", { className: "close-btn", onClick: onClose }, "\u00D7")
                 ),
                 React.createElement("div", { className: "modal-content" },
-                    !aiSuggestedMap && !isSuggesting && (
-                        React.createElement("div", { className: "mapping-intro" },
-                            React.createElement("p", null, "Os cabeçalhos do seu CSV não correspondem ao nosso layout padrão."),
-                            React.createElement("p", null, "Gostaria que a IA sugerisse um mapeamento para os campos conhecidos?")
+                    isGenerating ? (
+                        React.createElement("div", { className: "loader-container" },
+                            React.createElement("div", { className: "loader" }),
+                            React.createElement("p", null, "A IA está criando um template baseado nas suas colunas...")
                         )
-                    ),
-                    isSuggesting && React.createElement("div", { className: "loader-container" }, React.createElement("div", { className: "loader" }), React.createElement("p", null, "Analisando colunas...")),
-                    aiSuggestedMap && userMap && (
-                       React.createElement("div", { className: "mapping-table-container" },
-                        React.createElement("p", null, "Revise e ajuste o mapeamento sugerido pela IA. Selecione a coluna do seu arquivo que corresponde a cada campo do sistema."),
-                         React.createElement("table", { className: "mapping-table" },
-                            React.createElement("thead", null, React.createElement("tr", null, 
-                                React.createElement("th", null, "Campo do Sistema"),
-                                React.createElement("th", null, "Sua Coluna (Sugerida pela IA)")
-                            )),
-                            React.createElement("tbody", null, 
-                                Object.keys(PLACEHOLDER_TO_CSV_HEADER_MAP).map(systemField => (
-                                    React.createElement("tr", { key: systemField },
-                                        React.createElement("td", null, systemField),
-                                        React.createElement("td", null, 
-                                            React.createElement("select", { value: userMap[systemField] || 'null', onChange: (e) => handleSelectChange(systemField, e.target.value) },
-                                                React.createElement("option", { value: "null" }, "--- Não Mapear ---"),
-                                                csvHeaders.map(header => React.createElement("option", { key: header, value: header }, header))
-                                            )
-                                        )
-                                    )
-                                ))
-                            )
-                         )
-                       )
+                    ) : (
+                        React.createElement("div", { className: "mapping-intro" },
+                            React.createElement("p", null, "Notamos que seu arquivo CSV tem um layout novo."),
+                            React.createElement("p", null, "Gostaria que a IA gerasse um template de documento profissional baseado nas colunas do seu arquivo?")
+                        )
                     )
                 ),
                 React.createElement("div", { className: "modal-footer" },
-                    !aiSuggestedMap ? (
-                        React.createElement(React.Fragment, null,
-                            React.createElement("button", { className: "btn", onClick: onClose, disabled: isSuggesting }, "Cancelar"),
-                            React.createElement("button", { className: "btn btn-primary", onClick: onSuggest, disabled: isSuggesting }, "Sugerir com IA")
-                        )
-                    ) : (
-                        React.createElement(React.Fragment, null,
-                             React.createElement("button", { className: "btn", onClick: onClose }, "Cancelar"),
-                             React.createElement("button", { className: "btn btn-primary", onClick: handleApply }, "Aplicar Mapeamento")
-                        )
-                    )
+                    React.createElement("button", { className: "btn", onClick: onClose, disabled: isGenerating }, "Cancelar"),
+                    React.createElement("button", { className: "btn btn-primary", onClick: onGenerate, disabled: isGenerating }, "Gerar Template com IA")
                 )
             )
         )
@@ -334,7 +279,7 @@ const App = () => {
   const [sidebarWidth, setSidebarWidth] = useState(500);
   const mainContainerRef = useRef(null);
   
-  const [validationStatuses, setValidationStatuses] = useState({}); // { [index]: 'not-validated' | 'validating' | 'success' | 'error' }
+  const [validationStatuses, setValidationStatuses] = useState({});
   const [isBatchValidating, setIsBatchValidating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   
@@ -343,10 +288,9 @@ const App = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
   
-  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [isTemplateGenModalOpen, setIsTemplateGenModalOpen] = useState(false);
   const [pendingCsvData, setPendingCsvData] = useState(null);
-  const [aiSuggestedMap, setAiSuggestedMap] = useState(null);
-  const [isSuggestingMap, setIsSuggestingMap] = useState(false);
+  const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
   const [activeMapping, setActiveMapping] = useState(PLACEHOLDER_TO_CSV_HEADER_MAP);
 
   useEffect(() => {
@@ -371,8 +315,10 @@ const App = () => {
 
   const anatelCodes = useMemo(() => {
     if (!csvData) return [];
-    const anatelHeader = activeMapping['codigo_oferta'];
-    if (!anatelHeader) return [];
+    const anatelHeaderKey = 'codigo_oferta';
+    const anatelHeader = activeMapping[anatelHeaderKey];
+    if (!anatelHeader || !csvData.rows[0]?.hasOwnProperty(anatelHeader)) return [];
+
     const codes = new Set(csvData.rows.map(row => row[anatelHeader]).filter(Boolean));
     return Array.from(codes).sort();
   }, [csvData, activeMapping]);
@@ -389,8 +335,9 @@ const App = () => {
         return rowsWithOriginalIndex;
       }
       
-      const anatelHeader = activeMapping['codigo_oferta'];
-      if(!anatelHeader) return rowsWithOriginalIndex;
+      const anatelHeaderKey = 'codigo_oferta';
+      const anatelHeader = activeMapping[anatelHeaderKey];
+      if(!anatelHeader || !csvData.rows[0]?.hasOwnProperty(anatelHeader)) return rowsWithOriginalIndex;
 
       return rowsWithOriginalIndex.filter(row => row[anatelHeader] === filteredAnatelCode);
   }, [csvData, filteredAnatelCode, activeMapping]);
@@ -457,26 +404,24 @@ const App = () => {
   const triggerCsvUpload = () => { fileInputRef.current?.click(); };
   const triggerTemplateUpload = () => { templateInputRef.current?.click(); };
   
-    const finishCsvLoad = (data, mapping) => {
+    const finishCsvLoad = (data, mapping, newTemplateHtml = null) => {
         setCsvData(data);
         setActiveMapping(mapping);
+        if (newTemplateHtml) {
+            setTemplateHtml(newTemplateHtml);
+        }
         setAiFeedbacks({});
         setFilteredAnatelCode('');
-        addToast("CSV carregado com sucesso!", "success");
+        addToast("CSV carregado e configurado com sucesso!", "success");
 
         if (data.rows.length > 0) {
             setSelectedColumnIndex(0);
-            const element = document.getElementById(`record-preview-0`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
         } else {
             setSelectedColumnIndex(null);
         }
         
-        setIsMappingModalOpen(false);
+        setIsTemplateGenModalOpen(false);
         setPendingCsvData(null);
-        setAiSuggestedMap(null);
     };
 
     const handleCsvUpload = (event) => {
@@ -493,13 +438,12 @@ const App = () => {
                 );
                 
                 const data = { headers, rows };
-                
                 const defaultHeaders = Object.values(PLACEHOLDER_TO_CSV_HEADER_MAP);
                 const matchCount = headers.filter(h => defaultHeaders.includes(h)).length;
 
                 if (matchCount < defaultHeaders.length * 0.7) { 
                     setPendingCsvData(data);
-                    setIsMappingModalOpen(true);
+                    setIsTemplateGenModalOpen(true);
                 } else {
                     finishCsvLoad(data, PLACEHOLDER_TO_CSV_HEADER_MAP);
                 }
@@ -511,69 +455,52 @@ const App = () => {
         });
         if(event.target) event.target.value = '';
     };
-
-    const handleSuggestMapping = async () => {
+    
+    const handleGenerateTemplate = async () => {
         if (!ai) {
-            addToast("Chave de API é necessária para sugerir mapeamento.", "error");
+            addToast("Chave de API é necessária para gerar o template.", "error");
             setIsApiKeyModalOpen(true);
             return;
         }
         if (!pendingCsvData) return;
 
-        setIsSuggestingMap(true);
+        setIsGeneratingTemplate(true);
         try {
-            const systemFields = Object.keys(PLACEHOLDER_TO_CSV_HEADER_MAP);
             const userHeaders = pendingCsvData.headers;
-
-            const properties = {};
-            systemFields.forEach(field => {
-                properties[field] = { type: Type.STRING, description: `O cabeçalho do CSV do usuário que melhor corresponde a '${field}'. Use null se não houver correspondência.` };
-            });
-
             const prompt = `
-                Você é um assistente de mapeamento de dados. Associe os cabeçalhos de um arquivo CSV de telecomunicações aos campos de um sistema pré-definido.
-                
-                Campos do sistema: ${systemFields.join(', ')}
-                Cabeçalhos do usuário: ${userHeaders.join(', ')}
+                Você é um especialista em design de documentos. Baseado na seguinte lista de cabeçalhos de colunas de um CSV, gere um template de documento em HTML limpo e profissional.
+                O documento deve agrupar informações relacionadas de forma lógica e usar formatação apropriada (títulos, listas, tabelas).
+                Para cada cabeçalho de coluna, você DEVE inserir um placeholder no formato {{Nome do Cabeçalho}}. Use os nomes exatos dos cabeçalhos fornecidos.
+                O resultado deve ser APENAS o código HTML para o corpo do documento (sem <html>, <head> ou <body> tags).
 
-                Retorne um objeto JSON onde cada chave é um campo do sistema e o valor é o cabeçalho correspondente do usuário. Se não houver correspondência clara, use null para o valor.
+                Cabeçalhos do CSV: ${userHeaders.join(', ')}
             `;
 
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: properties,
-                    }
-                }
-            });
+            const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: prompt});
+            const newTemplateHtml = response.text;
+            
+            const newMap = userHeaders.reduce((acc, h) => {
+                acc[h] = h;
+                return acc;
+            }, {});
 
-            const suggested = JSON.parse(response.text);
-            setAiSuggestedMap(suggested);
+            finishCsvLoad(pendingCsvData, newMap, newTemplateHtml);
+            addToast("Template gerado pela IA com sucesso!", "success");
 
         } catch (error) {
-            console.error("Error suggesting mapping:", error);
-            addToast("Erro ao obter sugestão da IA.", "error");
-            const emptyMap = {};
-            Object.keys(PLACEHOLDER_TO_CSV_HEADER_MAP).forEach(k => emptyMap[k] = null);
-            setAiSuggestedMap(emptyMap);
+            console.error("Error generating template:", error);
+            addToast("Erro ao gerar template com a IA.", "error");
         } finally {
-            setIsSuggestingMap(false);
+            setIsGeneratingTemplate(false);
+            setIsTemplateGenModalOpen(false);
         }
     };
     
-    const handleCloseMappingModal = () => {
-        setIsMappingModalOpen(false);
+    const handleCloseTemplateGenModal = () => {
+        setIsTemplateGenModalOpen(false);
         setPendingCsvData(null);
-        setAiSuggestedMap(null);
     };
 
-    const handleApplyMapping = (userConfirmedMap) => {
-        finishCsvLoad(pendingCsvData, userConfirmedMap);
-    };
 
   const handleTemplateUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -587,7 +514,11 @@ const App = () => {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.convertToHtml({ arrayBuffer });
         setTemplateHtml(result.value);
-        addToast("Template carregado.", "success");
+        
+        // When a user uploads a template, assume it uses the default mapping
+        setActiveMapping(PLACEHOLDER_TO_CSV_HEADER_MAP);
+        addToast("Template carregado. Mapeamento de colunas redefinido para o padrão.", "success");
+
     } catch (error) {
         console.error("Error loading or converting template:", error);
         setTemplateError("Não foi possível carregar ou processar o template. Verifique se é um arquivo .docx válido.");
@@ -641,13 +572,13 @@ const App = () => {
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            field: { type: Type.STRING },
-                            feedback: { type: Type.STRING },
-                            severity: { type: Type.STRING, enum: ['error', 'suggestion'] }
+                            field: { type: "STRING" },
+                            feedback: { type: "STRING" },
+                            severity: { type: "STRING", enum: ['error', 'suggestion'] }
                         }
                     }
                 }
@@ -737,14 +668,11 @@ const App = () => {
       ),
       React.createElement(ApiKeyModal, { isOpen: isApiKeyModalOpen, onClose: () => setIsApiKeyModalOpen(false), onSave: handleSaveApiKey, currentKey: apiKey }),
       React.createElement(InstructionModal, { isOpen: isInstructionModalOpen, onClose: () => setIsInstructionModalOpen(false), onSave: setAiInstructions, initialInstructions: aiInstructions }),
-      React.createElement(ColumnMappingModal, { 
-        isOpen: isMappingModalOpen,
-        onClose: handleCloseMappingModal,
-        onSuggest: handleSuggestMapping,
-        onApply: handleApplyMapping,
-        aiSuggestedMap: aiSuggestedMap,
-        csvHeaders: pendingCsvData ? pendingCsvData.headers : [],
-        isSuggesting: isSuggestingMap,
+      React.createElement(TemplateGenerationModal, { 
+        isOpen: isTemplateGenModalOpen,
+        onClose: handleCloseTemplateGenModal,
+        onGenerate: handleGenerateTemplate,
+        isGenerating: isGeneratingTemplate,
       }),
       React.createElement("input", { type: "file", ref: fileInputRef, style: { display: 'none' }, onChange: handleCsvUpload, accept: ".csv" }),
       React.createElement("input", { type: "file", ref: templateInputRef, style: { display: 'none' }, onChange: handleTemplateUpload, accept: ".docx" }),
@@ -831,7 +759,7 @@ const App = () => {
                     React.createElement("div", { className: "template-error-container" }, React.createElement("p", { className: "template-error" }, templateError))
                 ) : csvData && displayedRows.length === 0 ? (
                     React.createElement("div", { className: "placeholder-text" }, React.createElement("p", null, "Nenhum registro encontrado para o filtro selecionado."))
-                ) : React.createElement("p", { className: "placeholder-text" }, "Carregue um arquivo .docx como template para visualizar os registros.")
+                ) : React.createElement("p", { className: "placeholder-text" }, "Carregue um arquivo .docx como template ou deixe a IA gerar um para você.")
             )
           )
         )
