@@ -49,14 +49,26 @@ header {
 
 header h1 {
   font-weight: 500;
-  font-size: 1.8rem;
+  font-size: 1.6rem; /* Slightly smaller for more room */
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 1rem;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  flex-wrap: wrap; 
+}
+
+.header-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--border-color);
+}
+.header-group:last-child {
+    border-right: none;
+    padding-right: 0;
 }
 
 .filter-group {
@@ -137,27 +149,6 @@ header h1 {
   flex-grow: 1;
 }
 
-.search-input {
-  background-color: #1a1a1a;
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  width: 45%;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.search-input::placeholder {
-  color: #888;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--secondary-color);
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
 /* CSV Panel */
 .csv-panel {
   flex-shrink: 0;
@@ -200,7 +191,7 @@ header h1 {
   box-shadow: 0 0 0 2px var(--secondary-color);
 }
 .action-cell {
-  width: 80px;
+  width: 120px;
   text-align: center !important;
   vertical-align: middle;
 }
@@ -210,6 +201,25 @@ header h1 {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* --- Validation Status Icons --- */
+.status-icon {
+    font-size: 1rem;
+    line-height: 1;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.status-icon.validating {
+    animation: spin 1s linear infinite;
+}
+.status-icon.success { color: var(--success-color); }
+.status-icon.error { color: var(--error-color); }
+.status-icon.not-validated { opacity: 0.5; }
+
+
 .preview-btn {
   background: none;
   border: none;
@@ -633,6 +643,53 @@ header h1 {
 }
 
 
+/* --- Toast Notification Styles --- */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background-color: #333;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    opacity: 0;
+    transform: translateX(100%);
+    animation: slideIn 0.3s forwards;
+    border-left: 5px solid var(--info-color);
+}
+
+.toast.toast-success { border-left-color: var(--success-color); }
+.toast.toast-error { border-left-color: var(--error-color); }
+
+.toast-close-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.toast-close-btn:hover { color: #fff; }
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+
 /* --- Misc --- */
 .loader {
   border: 4px solid #ccc;
@@ -649,10 +706,7 @@ header h1 {
   100% { transform: rotate(360deg); }
 }
 
-@media (max-width: 1024px) {
-  body {
-      overflow: auto;
-  }
+@media (max-width: 1200px) {
   header {
     flex-direction: column;
     gap: 1rem;
@@ -661,6 +715,12 @@ header h1 {
   .header-actions {
     flex-wrap: wrap;
     justify-content: center;
+  }
+}
+
+@media (max-width: 1024px) {
+  body {
+      overflow: auto;
   }
   .container {
     flex-direction: column;
