@@ -155,10 +155,8 @@ interface DynamicPreviewProps {
     isValidating: boolean;
 }
 
-const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recordIndex, map, feedbackItems, isValidating }) => {
-    // FIX: Handle default value for feedbackItems internally to avoid potential `never[]` type inference issues.
-    const currentFeedbackItems = feedbackItems || [];
-
+// FIX: Set a default value for the `feedbackItems` prop to prevent TypeScript from inferring its type as `never[]` when it's undefined. This resolves compile-time errors and simplifies the component by removing the need for a separate `currentFeedbackItems` variable.
+const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
     // Helper to just get the raw value from the record
     const getValue = (placeholderKey: string) => {
         // Special handling for the validity period
@@ -179,7 +177,7 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
     // Helper to wrap a value in a feedback span if needed (for React rendering in the header)
     const renderWithFeedback = (placeholderKey: string) => {
         const value = getValue(placeholderKey);
-        const feedbackForItem = currentFeedbackItems.find(f => f.field === placeholderKey);
+        const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
         if (feedbackForItem) {
             // FIX: Corrected type inference makes String() unnecessary and resolves the 'never' type error.
             const escapedFeedback = feedbackForItem.feedback.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -201,7 +199,7 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
         placeholders.forEach(placeholderWithBraces => {
             const placeholderKey = placeholderWithBraces.replace(/[{}]/g, '').trim();
             const value = getValue(placeholderKey);
-            const feedbackForItem = currentFeedbackItems.find(f => f.field === placeholderKey);
+            const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
             let replacement = value;
 
             if (feedbackForItem) {
@@ -217,7 +215,7 @@ const DynamicPreview: React.FC<DynamicPreviewProps> = ({ template, record, recor
         return replacedHtml;
     };
     
-    const generalFeedback = currentFeedbackItems.find(f => f.field === 'general');
+    const generalFeedback = feedbackItems.find(f => f.field === 'general');
 
     return (
         <div className="preview-record-wrapper" id={`record-preview-${recordIndex}`}>
@@ -386,7 +384,20 @@ const App = () => {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
-
+  
+  // Auto-scroll to the first item in the preview when the filter changes or data loads
+  useEffect(() => {
+    if (displayedRows.length > 0) {
+        const firstItemIndex = displayedRows[0].originalIndex;
+        // Also update the selected item to match the scroll
+        setSelectedColumnIndex(firstItemIndex);
+        
+        const element = document.getElementById(`record-preview-${firstItemIndex}`);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  }, [displayedRows]);
 
   // --- Event Handlers ---
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -538,10 +549,22 @@ const App = () => {
         });
           
           const responseText = response.text;
-          if (!responseText) {
-            throw new Error("AI response was empty and could not be parsed.");
+          if (!responseText || responseText.trim() === '') {
+            throw new Error("AI response was empty.");
           }
-          const feedbackItems: AIFeedbackItem[] = JSON.parse(responseText);
+
+          let feedbackItems: AIFeedbackItem[];
+          try {
+              feedbackItems = JSON.parse(responseText);
+          } catch(e) {
+              console.error("Failed to parse AI response: ", responseText);
+              throw new Error("AI response was not valid JSON.");
+          }
+
+          if (!Array.isArray(feedbackItems)) {
+              console.error("Parsed AI response is not an array: ", feedbackItems);
+              throw new Error("AI response was not in the expected array format.");
+          }
 
           if (feedbackItems.length === 0) {
               const successFeedback: AIFeedbackItem[] = [{
@@ -557,7 +580,7 @@ const App = () => {
           console.error("Error with Gemini API or JSON parsing:", error);
           const errorFeedback: AIFeedbackItem[] = [{
               field: "general",
-              feedback: "Ocorreu um erro ao tentar validar o documento. Por favor, tente novamente.",
+              feedback: `Ocorreu um erro ao tentar validar: ${error instanceof Error ? error.message : String(error)}`,
               severity: "error"
           }];
           setAiFeedbacks(prev => ({ ...prev, [selectedColumnIndex]: errorFeedback }));
@@ -614,7 +637,7 @@ const App = () => {
 
       <header>
         <h1>Validador de Documentos com IA</h1>
-        <div className="header-controls">
+        <div className="header-actions">
             <button className="btn btn-primary" onClick={triggerCsvUpload}>
               Carregar CSV
             </button>
@@ -638,25 +661,32 @@ const App = () => {
               {isLoadingAI ? "Validando..." : "Validar com IA"}
             </button>
             {csvData && anatelCodes.length > 0 && (
-                <div className="filter-container">
+                <div className="filter-group">
                     <label htmlFor="anatel-filter">Filtrar por Cód. Anatel:</label>
                     <select
                         id="anatel-filter"
                         value={filteredAnatelCode}
                         onChange={(e) => setFilteredAnatelCode(e.target.value)}
                     >
-                        <option value="">Todos os Registros</option>
+                        <option value="">Todos</option>
                         {anatelCodes.map(code => (
                             <option key={code} value={code}>{code}</option>
                         ))}
                     </select>
+                    {filteredAnatelCode && (
+                       <button 
+                        className="clear-filter-btn" 
+                        onClick={() => setFilteredAnatelCode('')}
+                        title="Limpar filtro"
+                       >&times;</button>
+                    )}
                 </div>
             )}
             <button
               className="btn btn-primary"
               onClick={handleDownloadCsv}
               disabled={!csvData}>
-              Baixar CSV Atualizado
+              Baixar CSV
             </button>
         </div>
       </header>
@@ -683,14 +713,16 @@ const App = () => {
                     <th>Campo</th>
                     {displayedRows.map(({ originalIndex }) => (
                       <th key={originalIndex} className="action-cell">
-                        Registro {originalIndex + 1}
-                        <button
-                          title={`Visualizar Registro ${originalIndex + 1}`}
-                          aria-label={`Visualizar Registro ${originalIndex + 1}`}
-                          className={`preview-btn ${selectedColumnIndex === originalIndex ? 'active' : ''}`}
-                          onClick={() => handlePreview(originalIndex)}>
-                          👁️
-                        </button>
+                        <div className="record-header">
+                          <span>R.{originalIndex + 1}</span>
+                          <button
+                            title={`Visualizar Registro ${originalIndex + 1}`}
+                            aria-label={`Visualizar Registro ${originalIndex + 1}`}
+                            className={`preview-btn ${selectedColumnIndex === originalIndex ? 'active' : ''}`}
+                            onClick={() => handlePreview(originalIndex)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                          </button>
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -738,14 +770,16 @@ const App = () => {
                             isValidating={validatingRecordIndex === originalIndex}
                        />
                     ))
+                ) : templateError ? (
+                    <div className="template-error-container">
+                       <p className="template-error">{templateError}</p>
+                    </div>
+                ) : csvData && displayedRows.length === 0 ? (
+                    <div className="placeholder-text">
+                        <p>Nenhum registro encontrado para o filtro selecionado.</p>
+                    </div>
                 ) : (
-                    templateError ? (
-                        <div className="template-error-container">
-                           <p className="template-error">{templateError}</p>
-                        </div>
-                    ) : (
-                       <StaticPreviewLayout />
-                    )
+                   <StaticPreviewLayout />
                 )}
             </div>
           </div>

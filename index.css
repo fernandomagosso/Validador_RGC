@@ -52,33 +52,57 @@ header h1 {
   font-size: 1.8rem;
 }
 
-.header-controls {
+.header-actions {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
 }
 
-.filter-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--panel-background);
+    padding: 0.3rem 0.5rem 0.3rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
 }
-
-.filter-container label {
-  font-size: 0.9rem;
-  font-weight: 400;
-  color: #ccc;
-  white-space: nowrap;
+.filter-group label {
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: #ccc;
+    white-space: nowrap;
 }
-
-.filter-container select {
-  background-color: var(--panel-background);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  padding: 0.5rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: var(--font-family);
+.filter-group select {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 0.3rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+.filter-group select:focus {
+    outline: none;
+}
+.clear-filter-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    opacity: 0.7;
+    transition: color 0.2s;
+}
+.clear-filter-btn:hover {
+    color: var(--error-color);
+    opacity: 1;
 }
 
 .container {
@@ -155,6 +179,10 @@ header h1 {
   border: 1px solid var(--border-color);
   text-align: left;
   font-size: 0.9rem;
+  white-space: nowrap;
+}
+.csv-table td {
+  white-space: normal;
 }
 .csv-table th {
   background-color: #3a3a3a;
@@ -172,21 +200,37 @@ header h1 {
   box-shadow: 0 0 0 2px var(--secondary-color);
 }
 .action-cell {
-  width: 40px;
+  width: 80px;
   text-align: center !important;
+  vertical-align: middle;
+}
+.record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .preview-btn {
   background: none;
   border: none;
   color: var(--text-color);
   cursor: pointer;
-  font-size: 1.2rem;
   opacity: 0.7;
   transition: opacity 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+.preview-btn svg {
+  width: 16px;
+  height: 16px;
 }
 .preview-btn:hover {
   opacity: 1;
   color: var(--secondary-color);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 .preview-btn.active {
   color: var(--secondary-color);
@@ -197,6 +241,10 @@ header h1 {
   text-align: center;
   margin-top: 2rem;
   font-style: italic;
+  padding: 1rem;
+}
+.document-preview-container .placeholder-text {
+  color: #777;
 }
 
 /* --- Preview Panel Styles --- */
@@ -364,6 +412,7 @@ header h1 {
   font-weight: 500;
   transition: background-color 0.2s, opacity 0.2s, transform 0.1s;
   text-align: center;
+  white-space: nowrap;
 }
 .btn:active {
   transform: translateY(1px);
@@ -609,7 +658,7 @@ header h1 {
     gap: 1rem;
     align-items: stretch;
   }
-  .header-controls {
+  .header-actions {
     flex-wrap: wrap;
     justify-content: center;
   }
