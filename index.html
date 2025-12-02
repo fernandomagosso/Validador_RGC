@@ -24,13 +24,10 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- Babel for on-the-fly TypeScript compilation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <!-- Mammoth.js must be loaded globally as it doesn't have a simple ESM CDN export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     
-    <!-- Main Application Script -->
-    <script type="text/babel" src="index.tsx" data-presets="react,typescript"></script>
+    <!-- Main Application Script (now compiled) -->
+    <script type="module" src="index.js"></script>
   </body>
 </html>
