@@ -299,13 +299,13 @@ header h1 {
 /* Dynamic Preview Content */
 .dynamic-preview-content {
     line-height: 1.5;
+    padding: 1.5rem;
 }
 .dynamic-preview-content p, 
 .dynamic-preview-content li {
     line-height: 1.5;
 }
 
-/* This selector now targets any table inside the dynamic content, applying the Vivo theme */
 .dynamic-preview-content table {
   width: 100%;
   border-collapse: collapse;
@@ -330,15 +330,6 @@ header h1 {
     align-items: center;
     height: 100%;
     padding: 1rem;
-}
-
-.record-separator {
-  border: none;
-  border-top: 2px dashed #ccc;
-  margin: 2rem 0;
-}
-.record-separator:last-of-type {
-  display: none;
 }
 
 /* --- AI Feedback IN a Preview --- */
@@ -384,18 +375,17 @@ header h1 {
   border: 1px solid;
   font-size: 0.95rem;
   text-align: center;
+  color: #333;
 }
 
 .feedback-banner-success {
   background-color: rgba(46, 204, 113, 0.15);
   border-color: var(--success-color);
-  color: #333;
 }
 
 .feedback-banner-error {
   background-color: rgba(231, 76, 60, 0.15);
   border-color: var(--error-color);
-  color: #333;
 }
 
 .validation-overlay {
@@ -447,6 +437,21 @@ header h1 {
   opacity: 0.6;
   transform: none;
 }
+.settings-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    opacity: 0.8;
+    line-height: 1;
+    border-radius: 4px;
+}
+.settings-btn:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
+}
 
 /* --- Resizable Layout Styles --- */
 .resizer {
@@ -479,83 +484,7 @@ header h1 {
     font-style: normal;
 }
 
-/* --- Static Preview Layout --- */
-.static-preview-wrapper {
-  padding: 2rem;
-  line-height: 1.4;
-  font-size: 9pt;
-}
-.vivo-header {
-  background-color: var(--preview-purple);
-  color: white;
-  padding: 1.5rem;
-  display: flex;
-  gap: 2rem;
-  justify-content: space-between;
-}
-.vivo-header-left h2 {
-  font-size: 2rem;
-  margin: 0.5rem 0;
-  font-weight: bold;
-}
-.vivo-logo {
-    display: flex;
-    align-items: center;
-    font-size: 2rem;
-    font-weight: bold;
-}
-.vivo-logo span {
-    background: linear-gradient(45deg, #e6007e, #ff6a00, #facc00, #00b84c, #00a9e0);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-size: 2.5rem;
-    margin-left: 2px;
-}
-.vivo-header-right p {
-  margin: 0.3rem 0;
-}
-.vivo-content {
-  padding: 1.5rem 0;
-}
-.vivo-content h3 {
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-size: 1.2rem;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.3rem;
-}
-.vivo-content ul {
-  list-style-position: inside;
-  padding-left: 0.5rem;
-}
-.vivo-content li {
-  margin-bottom: 0.5rem;
-}
-.stfc-box {
-  border: 1px solid #ccc;
-  padding: 0.5rem;
-  margin: 1rem 0;
-  display: inline-block;
-}
-.vivo-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  font-size: 9pt;
-}
-.vivo-table th, .vivo-table td {
-  border: 1px solid var(--preview-purple);
-  padding: 0.6rem;
-  text-align: left;
-}
-.vivo-table th {
-  background-color: var(--preview-purple);
-  color: white;
-  font-weight: bold;
-}
-
-/* --- Instruction Modal Styles --- */
+/* --- Modals --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -641,7 +570,32 @@ header h1 {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
 }
-
+.modal-content .api-key-input {
+    width: 100%;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+.modal-content .api-key-input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.modal-content .api-key-helper-text {
+    font-size: 0.85rem;
+    color: #aaa;
+}
+.modal-content .api-key-helper-text a {
+    color: var(--secondary-color);
+    text-decoration: none;
+}
+.modal-content .api-key-helper-text a:hover {
+    text-decoration: underline;
+}
 
 /* --- Toast Notification Styles --- */
 .toast-container {
@@ -739,8 +693,5 @@ header h1 {
   .right-content-area {
     margin-left: 0;
     gap: 0;
-  }
-  .vivo-header {
-    flex-direction: column;
   }
 }

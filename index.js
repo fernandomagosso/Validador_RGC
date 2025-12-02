@@ -9,12 +9,6 @@ import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 import Papa from 'papaparse';
 
-// Polyfill for process.env to prevent crashes in browser environments
-if (typeof window !== 'undefined' && typeof window.process === 'undefined') {
-  window.process = { env: {} };
-}
-
-
 const mammoth = window["mammoth"];
 
 const PLACEHOLDER_TO_CSV_HEADER_MAP = {
@@ -68,69 +62,6 @@ Exemplos de validação:
 `;
 
 // --- Child Components ---
-const StaticPreviewLayout = () => (
-    React.createElement("div", { className: "static-preview-wrapper" },
-        React.createElement("div", { className: "vivo-header" },
-            React.createElement("div", { className: "vivo-header-left" },
-                React.createElement("div", { className: "vivo-logo" },
-                    React.createElement("strong", null, "vivo"),
-                    React.createElement("span", null, "\u2733")
-                ),
-                React.createElement("h2", null, "{{nome_comercial}}"),
-                React.createElement("p", null, "{{cabecalho}}")
-            ),
-            React.createElement("div", { className: "vivo-header-right" },
-                React.createElement("p", null, React.createElement("strong", null, "Oferta:"), " {{nome_comercial}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Oferta digital:"), " {{oferta_digital}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Prazo de vigência:"), " {{intervalo_vigencia}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Prazo de comercialização:"), " {{intervalo_comercializ}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Abrangência:"), " {{escalonamento_precos}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Código da oferta:"), " {{codigo_oferta}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Tecnologias:"), " {{tecnologia_servicos}}"),
-                React.createElement("p", null, React.createElement("strong", null, "Recomendações de uso:"), " {{recomendacoes_uso}}")
-            )
-        ),
-        React.createElement("div", { className: "vivo-content" },
-            React.createElement("h3", null, "Serviços adicionais"),
-            React.createElement("p", null, React.createElement("strong", null, "Fixa:"), " {{nome_agrupador_sva_scm_servicos_adicionais}}"),
-            React.createElement("div", { className: "stfc-box" },
-                React.createElement("strong", null, "Ligações STFC:"), " {{ligacoes_stfc}}"
-            ),
-            React.createElement("table", { className: "vivo-table" },
-                React.createElement("thead", null,
-                    React.createElement("tr", null, React.createElement("th", { colSpan: 2 }, "Taxas e Adicionais"))
-                ),
-                React.createElement("tbody", null,
-                    React.createElement("tr", null,
-                        React.createElement("td", null, "Adesão R${{taxas_adicionais}}"),
-                        React.createElement("td", null, "Instalação R${{valores_taxas_adicionais}}")
-                    )
-                )
-            ),
-            React.createElement("table", { className: "vivo-table" },
-                React.createElement("tbody", null,
-                    React.createElement("tr", null, React.createElement("th", null, "Preço"), React.createElement("td", null, "R${{preco}}")),
-                    React.createElement("tr", null, React.createElement("th", null, "Preços individuais", React.createElement("br"), "dos serviços da oferta conjunta"), React.createElement("td", null, "{{precos_individuais_oferta_conjunta}}")),
-                    React.createElement("tr", null, React.createElement("th", null, "Critérios de reajuste"), React.createElement("td", null, "{{reajuste}}")),
-                    React.createElement("tr", null, React.createElement("th", null, "Fidelização"), React.createElement("td", null, "{{periodo_fidelizacao}}")),
-                    React.createElement("tr", null, React.createElement("th", null, "Multa por rescisão antecipada"), React.createElement("td", null, "{{multa_rescisao_antecipada}}"))
-                )
-            ),
-            React.createElement("p", null, React.createElement("strong", null, "Modalidade de contratação:"), " {{modalidade_contratacao}}"),
-            React.createElement("p", null, React.createElement("strong", null, "Condições de pagamento:"), " {{condicoes_pagamento}}"),
-            React.createElement("p", null, React.createElement("strong", null, "Educação para consumo:"), " {{educacao_consumo}}"),
-            React.createElement("h3", null, "Informações complementares"),
-            React.createElement("ul", null,
-                React.createElement("li", null, React.createElement("strong", null, "Canais de Atendimento:"), " {{canais_atendimento}}"),
-                React.createElement("li", null, React.createElement("strong", null, "Detalhes da Oferta:"), " {{detalhes_oferta}}"),
-                React.createElement("li", null, "Abrangente para áreas específicas nos seguintes Municípios: {{sub_campo_area_abrangencia_fixa}}"),
-                React.createElement("li", null, React.createElement("strong", null, "Versionamento:"), " {{versionamento}}"),
-                React.createElement("li", null, React.createElement("strong", null, "Link Etiqueta Padrão:"), " {{link_etiqueta_padrao}}")
-            )
-        )
-    )
-);
-
 const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
     const getValue = (placeholderKey) => {
         if (placeholderKey === 'intervalo_vigencia') {
@@ -143,20 +74,6 @@ const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = []
         }
         const csvHeader = map[placeholderKey];
         return record[csvHeader] || '';
-    };
-
-    const renderWithFeedback = (placeholderKey) => {
-        const value = getValue(placeholderKey);
-        const feedbackForItem = feedbackItems.find(f => f.field === placeholderKey);
-        if (feedbackForItem) {
-            const escapedFeedback = String(feedbackForItem.feedback).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-            return (
-                React.createElement("span", { className: `has-feedback feedback-${feedbackForItem.severity}`, "data-feedback": escapedFeedback },
-                    value
-                )
-            );
-        }
-        return React.createElement(React.Fragment, null, value);
     };
 
     const getReplacedDocxHtml = () => {
@@ -193,32 +110,10 @@ const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = []
                     generalFeedback.feedback
                 )
             ),
-            React.createElement("div", { className: "static-preview-wrapper", style: { margin: '0 -1rem -1rem -1rem' } },
-                React.createElement("div", { className: "vivo-header" },
-                    React.createElement("div", { className: "vivo-header-left" },
-                        React.createElement("div", { className: "vivo-logo" }, React.createElement("strong", null, "vivo"), React.createElement("span", null, "\u2733")),
-                        React.createElement("h2", null, renderWithFeedback('nome_comercial')),
-                        React.createElement("p", null, renderWithFeedback('cabecalho'))
-                    ),
-                    React.createElement("div", { className: "vivo-header-right" },
-                        React.createElement("p", null, React.createElement("strong", null, "Oferta:"), " ", renderWithFeedback('nome_comercial')),
-                        React.createElement("p", null, React.createElement("strong", null, "Oferta digital:"), " ", renderWithFeedback('oferta_digital')),
-                        React.createElement("p", null, React.createElement("strong", null, "Prazo de vigência:"), " ", renderWithFeedback('intervalo_vigencia')),
-                        React.createElement("p", null, React.createElement("strong", null, "Prazo de comercialização:"), " ", renderWithFeedback('intervalo_comercializ')),
-                        React.createElement("p", null, React.createElement("strong", null, "Abrangência:"), " ", renderWithFeedback('escalonamento_precos')),
-                        React.createElement("p", null, React.createElement("strong", null, "Código da oferta:"), " ", renderWithFeedback('codigo_oferta')),
-                        React.createElement("p", null, React.createElement("strong", null, "Tecnologias:"), " ", renderWithFeedback('tecnologia_servicos')),
-                        React.createElement("p", null, React.createElement("strong", null, "Recomendações de uso:"), " ", renderWithFeedback('recomendacoes_uso'))
-                    )
-                ),
-                React.createElement("div", { className: "vivo-content" },
-                     React.createElement("div", {
-                        className: "dynamic-preview-content",
-                        dangerouslySetInnerHTML: { __html: getReplacedDocxHtml() }
-                    })
-                )
-            ),
-            React.createElement("hr", { className: "record-separator" })
+             React.createElement("div", {
+                className: "dynamic-preview-content",
+                dangerouslySetInnerHTML: { __html: getReplacedDocxHtml() }
+            })
         )
     );
 };
@@ -261,6 +156,46 @@ const InstructionModal = ({ isOpen, onClose, onSave, initialInstructions }) => {
     );
 };
 
+const ApiKeyModal = ({ isOpen, onClose, onSave, currentKey }) => {
+    const [localKey, setLocalKey] = useState(currentKey);
+
+    useEffect(() => {
+        setLocalKey(currentKey);
+    }, [isOpen, currentKey]);
+
+    if (!isOpen) return null;
+
+    const handleSave = () => { onSave(localKey); };
+    const handleOverlayClick = currentKey ? onClose : () => {};
+
+    return React.createElement("div", { className: "modal-overlay", onClick: handleOverlayClick },
+        React.createElement("div", { className: "modal", onClick: e => e.stopPropagation() },
+            React.createElement("div", { className: "modal-header" },
+                React.createElement("h3", null, "Configurar Chave de API do Gemini"),
+                currentKey && React.createElement("button", { className: "close-btn", onClick: onClose }, "×")
+            ),
+            React.createElement("div", { className: "modal-content" },
+                React.createElement("p", null, "Para usar as funcionalidades de IA, por favor, insira sua chave de API do Google Gemini."),
+                React.createElement("input", {
+                    type: "password",
+                    className: "api-key-input",
+                    placeholder: "Cole sua chave de API aqui",
+                    value: localKey,
+                    onChange: e => setLocalKey(e.target.value)
+                }),
+                React.createElement("p", { className: "api-key-helper-text" },
+                    "Sua chave é armazenada apenas no seu navegador e nunca é enviada para nossos servidores. ",
+                    React.createElement("a", { href: "https://aistudio.google.com/app/apikey", target: "_blank", rel: "noopener noreferrer" }, "Obtenha sua chave aqui.")
+                )
+            ),
+            React.createElement("div", { className: "modal-footer" },
+                currentKey && React.createElement("button", { className: "btn", onClick: onClose }, "Cancelar"),
+                React.createElement("button", { className: "btn btn-primary", onClick: handleSave }, "Salvar Chave")
+            )
+        )
+    );
+};
+
 const Toast = ({ message, type, onDismiss }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -278,12 +213,24 @@ const Toast = ({ message, type, onDismiss }) => {
 };
 
 const App = () => {
-  const [ai, setAi] = useState(null);
-  useEffect(() => {
-    if (process.env.API_KEY) {
-        setAi(new GoogleGenAI({ apiKey: process.env.API_KEY }));
-    }
+  const [apiKey, setApiKey] = useState('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  
+  const addToast = useCallback((message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
   }, []);
+
+  const ai = useMemo(() => {
+    if (!apiKey) return null;
+    try {
+        return new GoogleGenAI({ apiKey });
+    } catch (error) {
+        console.error("Failed to initialize GoogleGenAI:", error);
+        addToast("Chave de API inválida ou mal formatada.", "error");
+        return null;
+    }
+  }, [apiKey, addToast]);
 
   const fileInputRef = useRef(null);
   const templateInputRef = useRef(null);
@@ -307,13 +254,29 @@ const App = () => {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   
   const [toasts, setToasts] = useState([]);
-  const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-  }, []);
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem("gemini-api-key");
+    if (savedKey) {
+        setApiKey(savedKey);
+    } else {
+        setIsApiKeyModalOpen(true);
+    }
+  }, []);
+
+  const handleSaveApiKey = (newKey) => {
+    if (newKey && newKey.trim()) {
+        setApiKey(newKey);
+        localStorage.setItem("gemini-api-key", newKey);
+        setIsApiKeyModalOpen(false);
+        addToast("Chave de API salva com sucesso!", "success");
+    } else {
+        addToast("Chave de API não pode ser vazia.", "error");
+    }
+  };
 
   const anatelCodes = useMemo(() => {
     if (!csvData) return [];
@@ -379,7 +342,6 @@ const App = () => {
   useEffect(() => {
     if (displayedRows.length > 0) {
         const firstItemIndex = displayedRows[0].originalIndex;
-        // Don't auto-select if a selection is already made, prevents jumping
         if (selectedColumnIndex === null) {
           setSelectedColumnIndex(firstItemIndex);
         }
@@ -389,20 +351,15 @@ const App = () => {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
-  }, [filteredAnatelCode]); // Only run on filter change
+  }, [filteredAnatelCode, displayedRows, selectedColumnIndex]);
 
   const handleMouseDown = (e) => {
     e.preventDefault();
     setIsResizing(true);
   };
 
-  const triggerCsvUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const triggerTemplateUpload = () => {
-    templateInputRef.current?.click();
-  };
+  const triggerCsvUpload = () => { fileInputRef.current?.click(); };
+  const triggerTemplateUpload = () => { templateInputRef.current?.click(); };
   
   const handleCsvUpload = (event) => {
     const file = event.target.files?.[0];
@@ -449,13 +406,7 @@ const App = () => {
 
     try {
         const arrayBuffer = await file.arrayBuffer();
-        
-        const options = {
-            convertImage: mammoth.images.inline(),
-            ignoreEmptyParagraphs: true,
-        };
-
-        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer }, options);
+        const result = await mammoth.convertToHtml({ arrayBuffer });
         setTemplateHtml(result.value);
         addToast("Template carregado.", "success");
     } catch (error) {
@@ -472,14 +423,11 @@ const App = () => {
 
   const handleCellEdit = (rowIndex, header, value) => {
     if (!csvData) return;
-    
     const updatedRows = [...csvData.rows];
     updatedRows[rowIndex] = { ...updatedRows[rowIndex], [header]: value };
-
     setCsvData({ ...csvData, rows: updatedRows });
     setValidationStatuses(prev => ({ ...prev, [rowIndex]: 'not-validated' }));
   };
-
 
   const handlePreview = useCallback((columnIndex) => {
       const element = document.getElementById(`record-preview-${columnIndex}`);
@@ -489,10 +437,10 @@ const App = () => {
       setSelectedColumnIndex(columnIndex);
   }, []);
 
-
   const runValidationForIndex = async (index) => {
     if (!ai) {
-        addToast("Chave de API não configurada.", "error");
+        addToast("Chave de API não configurada. Configure-a no menu de configurações (⚙️).", "error");
+        setIsApiKeyModalOpen(true);
         return 'error';
     }
       setValidatingRecordIndex(index);
@@ -545,11 +493,8 @@ const App = () => {
           }
       } catch (error) {
           console.error(`Error validating record ${index}:`, error);
-          const errorFeedback = [{
-              field: "general",
-              feedback: `Ocorreu um erro: ${error instanceof Error ? error.message : String(error)}`,
-              severity: "error"
-          }];
+          const errorMsg = error.message.includes("API key not valid") ? "Chave de API inválida." : `Ocorreu um erro: ${error.message}`;
+          const errorFeedback = [{ field: "general", feedback: errorMsg, severity: "error" }];
           setAiFeedbacks(prev => ({ ...prev, [index]: errorFeedback }));
           setValidationStatuses(prev => ({ ...prev, [index]: 'error' }));
           return 'error';
@@ -574,8 +519,9 @@ const App = () => {
       for (let i = 0; i < total; i++) {
           const row = displayedRows[i];
           setBatchProgress({ current: i + 1, total });
-          handlePreview(row.originalIndex); // Scroll to the item being validated
-          await runValidationForIndex(row.originalIndex);
+          handlePreview(row.originalIndex);
+          const result = await runValidationForIndex(row.originalIndex);
+          if (result === 'error' && !ai) break; // Stop batch if API key is missing/invalid
       }
 
       setIsBatchValidating(false);
@@ -608,14 +554,9 @@ const App = () => {
   return (
     React.createElement(React.Fragment, null,
       React.createElement("div", { className: "toast-container" },
-        toasts.map(toast =>
-          React.createElement(Toast, {
-            key: toast.id,
-            ...toast,
-            onDismiss: () => removeToast(toast.id)
-          })
-        )
+        toasts.map(toast => React.createElement(Toast, { key: toast.id, ...toast, onDismiss: () => removeToast(toast.id) }))
       ),
+      React.createElement(ApiKeyModal, { isOpen: isApiKeyModalOpen, onClose: () => setIsApiKeyModalOpen(false), onSave: handleSaveApiKey, currentKey: apiKey }),
       React.createElement("input", { type: "file", ref: fileInputRef, style: { display: 'none' }, onChange: handleCsvUpload, accept: ".csv" }),
       React.createElement("input", { type: "file", ref: templateInputRef, style: { display: 'none' }, onChange: handleTemplateUpload, accept: ".docx" }),
       React.createElement(InstructionModal, { isOpen: isInstructionModalOpen, onClose: () => setIsInstructionModalOpen(false), onSave: setAiInstructions, initialInstructions: aiInstructions }),
@@ -624,23 +565,26 @@ const App = () => {
         React.createElement("div", { className: "header-actions" },
           React.createElement("div", { className: "header-group" },
             React.createElement("button", { className: "btn", onClick: triggerCsvUpload }, "Carregar CSV"),
-            React.createElement("button", { className: "btn", onClick: triggerTemplateUpload, disabled: !csvData || isTemplateLoading }, isTemplateLoading ? "Carregando..." : "Carregar Template"),
+            React.createElement("button", { className: "btn", onClick: triggerTemplateUpload, disabled: isTemplateLoading }, isTemplateLoading ? "Carregando..." : "Carregar Template"),
             React.createElement("button", { className: "btn", onClick: handleDownloadCsv, disabled: !csvData }, "Baixar CSV")
           ),
           React.createElement("div", { className: "header-group" },
-            React.createElement("button", { className: "btn", onClick: () => setIsInstructionModalOpen(true), disabled: !csvData, title: "Ajustar instruções de validação da IA" }, "Instruções IA"),
-            React.createElement("button", { className: "btn btn-secondary", onClick: handleValidateSingle, disabled: !csvData || isBatchValidating || validatingRecordIndex !== null || selectedColumnIndex === null || !templateHtml }, "Validar Selecionado"),
-            React.createElement("button", { className: "btn btn-primary", onClick: handleBatchValidate, disabled: !csvData || isBatchValidating || validatingRecordIndex !== null || !templateHtml }, isBatchValidating ? `Validando ${batchProgress.current}/${batchProgress.total}...` : "Validar Visíveis")
+            React.createElement("button", { className: "btn btn-secondary", onClick: handleValidateSingle, disabled: !ai || !csvData || isBatchValidating || validatingRecordIndex !== null || selectedColumnIndex === null || !templateHtml }, "Validar Selecionado"),
+            React.createElement("button", { className: "btn btn-primary", onClick: handleBatchValidate, disabled: !ai || !csvData || isBatchValidating || validatingRecordIndex !== null || !templateHtml }, isBatchValidating ? `Validando ${batchProgress.current}/${batchProgress.total}...` : "Validar Visíveis")
           ),
-          csvData && anatelCodes.length > 0 && (
-            React.createElement("div", { className: "filter-group" },
-              React.createElement("label", { htmlFor: "anatel-filter" }, "Cód. Anatel:"),
-              React.createElement("select", { id: "anatel-filter", value: filteredAnatelCode, onChange: (e) => setFilteredAnatelCode(e.target.value) },
-                React.createElement("option", { value: "" }, "Todos"),
-                anatelCodes.map(code => React.createElement("option", { key: code, value: code }, code))
-              ),
-              filteredAnatelCode && (React.createElement("button", { className: "clear-filter-btn", onClick: () => setFilteredAnatelCode(''), title: "Limpar filtro" }, "\u00D7"))
-            )
+          React.createElement("div", { className: "header-group" },
+             csvData && anatelCodes.length > 0 && (
+                React.createElement("div", { className: "filter-group" },
+                  React.createElement("label", { htmlFor: "anatel-filter" }, "Cód. Anatel:"),
+                  React.createElement("select", { id: "anatel-filter", value: filteredAnatelCode, onChange: (e) => setFilteredAnatelCode(e.target.value) },
+                    React.createElement("option", { value: "" }, "Todos"),
+                    anatelCodes.map(code => React.createElement("option", { key: code, value: code }, code))
+                  ),
+                  filteredAnatelCode && (React.createElement("button", { className: "clear-filter-btn", onClick: () => setFilteredAnatelCode(''), title: "Limpar filtro" }, "\u00D7"))
+                )
+             ),
+             React.createElement("button", { className: "btn", onClick: () => setIsInstructionModalOpen(true), disabled: !ai, title: "Ajustar instruções de validação da IA" }, "Instruções IA"),
+             React.createElement("button", { className: "btn settings-btn", onClick: () => setIsApiKeyModalOpen(true), title: "Configurações" }, "\u2699\uFE0F")
           )
         )
       ),
@@ -699,7 +643,7 @@ const App = () => {
                     React.createElement("div", { className: "template-error-container" }, React.createElement("p", { className: "template-error" }, templateError))
                 ) : csvData && displayedRows.length === 0 ? (
                     React.createElement("div", { className: "placeholder-text" }, React.createElement("p", null, "Nenhum registro encontrado para o filtro selecionado."))
-                ) : React.createElement(StaticPreviewLayout, null)
+                ) : React.createElement("p", { className: "placeholder-text" }, "Carregue um arquivo .docx como template para visualizar os registros.")
             )
           )
         )
