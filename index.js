@@ -56,6 +56,15 @@ Para cada problema encontrado, identifique o campo (a chave do JSON) onde o erro
 Se nenhum erro for encontrado, retorne um array vazio [].
 `;
 
+// --- Helper Functions ---
+function cleanAiHtmlResponse(rawText) {
+    if (!rawText) return '';
+    // Remove markdown code blocks (```html ... ``` or ``` ... ```)
+    const cleaned = rawText.replace(/```(html)?\s*([\s\S]*?)\s*```/g, '$2');
+    return cleaned.trim();
+}
+
+
 // --- Child Components ---
 const DynamicPreview = ({ template, record, recordIndex, map, feedbackItems = [], isValidating }) => {
     const getValue = (placeholderKey) => {
@@ -241,6 +250,91 @@ const TemplateGenerationModal = ({ isOpen, onClose, onGenerate, isGenerating }) 
     );
 };
 
+const DataFormattingChoiceModal = ({ isOpen, onSkip, onFormat, onCancel }) => {
+    if (!isOpen) return null;
+
+    return (
+        React.createElement("div", { className: "modal-overlay" },
+            React.createElement("div", { className: "modal", onClick: e => e.stopPropagation() },
+                React.createElement("div", { className: "modal-header" },
+                    React.createElement("h3", null, "Formatação de Dados (Opcional)"),
+                    React.createElement("button", { className: "close-btn", onClick: onCancel }, "\u00D7")
+                ),
+                React.createElement("div", { className: "modal-content" },
+                    React.createElement("p", null, "Deseja limpar, transformar ou formatar os dados do seu CSV usando IA antes de continuar?"),
+                    React.createElement("p", { className: "p-small" }, "(Ex: formatar datas, combinar colunas, remover espaços extras, etc.)")
+                ),
+                React.createElement("div", { className: "modal-footer" },
+                    React.createElement("button", { className: "btn", onClick: onSkip }, "Não, Continuar"),
+                    React.createElement("button", { className: "btn btn-primary", onClick: onFormat }, "Sim, Formatar Dados")
+                )
+            )
+        )
+    );
+};
+
+const PreviewTable = ({ title, data }) => {
+    if (!data) return null;
+    const headers = data.headers || [];
+    const rows = data.rows.slice(0, 5) || []; // Show first 5 rows for preview
+
+    return (
+        React.createElement("div", { className: "preview-table-wrapper" },
+            React.createElement("h4", null, title),
+            React.createElement("div", { className: "table-container" },
+                React.createElement("table", { className: "csv-table" },
+                    React.createElement("thead", null, React.createElement("tr", null, headers.map(h => React.createElement("th", { key: h }, h)))),
+                    React.createElement("tbody", null, rows.map((row, i) => React.createElement("tr", { key: i }, headers.map(h => React.createElement("td", { key: h }, row[h])))))
+                )
+            )
+        )
+    );
+};
+
+const DataFormattingWorkshopModal = ({ isOpen, onCancel, onApply, onPreview, originalData, previewData, isProcessing, prompt, setPrompt }) => {
+    if (!isOpen) return null;
+
+    return (
+        React.createElement("div", { className: "modal-overlay" },
+            React.createElement("div", { className: "modal modal-xlarge", onClick: e => e.stopPropagation() },
+                React.createElement("div", { className: "modal-header" },
+                    React.createElement("h3", null, "Oficina de Formatação com IA"),
+                    !isProcessing && React.createElement("button", { className: "close-btn", onClick: onCancel }, "\u00D7")
+                ),
+                React.createElement("div", { className: "modal-content" },
+                    React.createElement("div", { className: "workshop-layout" },
+                        React.createElement("div", { className: "workshop-prompt-section" },
+                            React.createElement("p", null, "Descreva as transformações que você deseja. Seja específico."),
+                            React.createElement("textarea", {
+                                value: prompt,
+                                onChange: e => setPrompt(e.target.value),
+                                placeholder: 'Ex: "Combine as colunas \'Nome\' e \'Sobrenome\' em uma nova coluna \'Nome Completo\'. Formate a coluna \'Preco\' para o padrão R$ 1.234,56."',
+                                rows: 8
+                            }),
+                            React.createElement("button", { className: "btn btn-secondary", onClick: onPreview, disabled: isProcessing },
+                                isProcessing ? "Processando..." : "Pré-visualizar Alterações"
+                            )
+                        ),
+                        React.createElement("div", { className: "workshop-preview-section" },
+                            isProcessing && React.createElement("div", { className: "loader-container" }, React.createElement("div", { className: "loader" })),
+                            !isProcessing && (
+                                React.createElement("div", { className: "side-by-side-preview" },
+                                    React.createElement(PreviewTable, { title: "Dados Originais", data: originalData }),
+                                    React.createElement(PreviewTable, { title: "Dados Formatados (Prévia)", data: previewData })
+                                )
+                            )
+                        )
+                    )
+                ),
+                React.createElement("div", { className: "modal-footer" },
+                    React.createElement("button", { className: "btn", onClick: onCancel, disabled: isProcessing }, "Cancelar"),
+                    React.createElement("button", { className: "btn btn-primary", onClick: onApply, disabled: isProcessing || !previewData }, "Aplicar Formatação")
+                )
+            )
+        )
+    );
+};
+
 
 const App = () => {
   const [apiKey, setApiKey] = useState('');
@@ -292,6 +386,14 @@ const App = () => {
   const [pendingCsvData, setPendingCsvData] = useState(null);
   const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
   const [activeMapping, setActiveMapping] = useState(PLACEHOLDER_TO_CSV_HEADER_MAP);
+  
+  const [isFormatChoiceModalOpen, setIsFormatChoiceModalOpen] = useState(false);
+  const [isWorkshopModalOpen, setIsWorkshopModalOpen] = useState(false);
+  const [originalCsvData, setOriginalCsvData] = useState(null);
+  const [formattingPreviewData, setFormattingPreviewData] = useState(null);
+  const [isFormattingPreview, setIsFormattingPreview] = useState(false);
+  const [formattingPrompt, setFormattingPrompt] = useState('');
+
 
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini-api-key");
@@ -403,6 +505,18 @@ const App = () => {
 
   const triggerCsvUpload = () => { fileInputRef.current?.click(); };
   const triggerTemplateUpload = () => { templateInputRef.current?.click(); };
+
+    const processDataAfterFormatting = (data) => {
+        const defaultHeaders = Object.values(PLACEHOLDER_TO_CSV_HEADER_MAP);
+        const matchCount = data.headers.filter(h => defaultHeaders.includes(h)).length;
+
+        if (matchCount < defaultHeaders.length * 0.7) { 
+            setPendingCsvData(data);
+            setIsTemplateGenModalOpen(true);
+        } else {
+            finishCsvLoad(data, PLACEHOLDER_TO_CSV_HEADER_MAP);
+        }
+    };
   
     const finishCsvLoad = (data, mapping, newTemplateHtml = null) => {
         setCsvData(data);
@@ -438,15 +552,8 @@ const App = () => {
                 );
                 
                 const data = { headers, rows };
-                const defaultHeaders = Object.values(PLACEHOLDER_TO_CSV_HEADER_MAP);
-                const matchCount = headers.filter(h => defaultHeaders.includes(h)).length;
-
-                if (matchCount < defaultHeaders.length * 0.7) { 
-                    setPendingCsvData(data);
-                    setIsTemplateGenModalOpen(true);
-                } else {
-                    finishCsvLoad(data, PLACEHOLDER_TO_CSV_HEADER_MAP);
-                }
+                setOriginalCsvData(data);
+                setIsFormatChoiceModalOpen(true);
             },
             error: (error) => {
                 console.error("Error parsing CSV file:", error);
@@ -454,6 +561,68 @@ const App = () => {
             },
         });
         if(event.target) event.target.value = '';
+    };
+
+    const handleSkipFormatting = () => {
+        setIsFormatChoiceModalOpen(false);
+        processDataAfterFormatting(originalCsvData);
+    };
+
+    const handleOpenWorkshop = () => {
+        setIsFormatChoiceModalOpen(false);
+        setFormattingPreviewData(null); // Clear previous preview
+        setFormattingPrompt('');
+        setIsWorkshopModalOpen(true);
+    };
+
+    const handlePreviewFormatting = async () => {
+        if (!ai) {
+            addToast("Chave de API é necessária para formatar dados.", "error");
+            setIsApiKeyModalOpen(true);
+            return;
+        }
+        setIsFormattingPreview(true);
+        try {
+            const dataSample = Papa.unparse(originalCsvData.rows, { header: true });
+
+            const fullPrompt = `
+                Você é um especialista em transformação de dados. Siga as instruções do usuário para modificar o seguinte CSV.
+                Retorne APENAS o CSV modificado como texto, mantendo todos os registros. Não adicione comentários.
+
+                Instruções do usuário: "${formattingPrompt}"
+
+                Dados CSV originais:
+                ---
+                ${dataSample}
+                ---
+            `;
+            
+            const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: fullPrompt});
+            const formattedCsvText = cleanAiHtmlResponse(response.text);
+
+            Papa.parse(formattedCsvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    const headers = results.meta.fields || [];
+                    const rows = results.data;
+                    setFormattingPreviewData({ headers, rows });
+                },
+                error: (err) => { throw new Error("A IA retornou um CSV mal formatado."); }
+            });
+
+        } catch (error) {
+            console.error("Error during formatting preview:", error);
+            addToast(`Erro na formatação: ${error.message}`, "error");
+            setFormattingPreviewData(null);
+        } finally {
+            setIsFormattingPreview(false);
+        }
+    };
+    
+    const handleApplyFormatting = () => {
+        setIsWorkshopModalOpen(false);
+        processDataAfterFormatting(formattingPreviewData);
     };
     
     const handleGenerateTemplate = async () => {
@@ -477,7 +646,7 @@ const App = () => {
             `;
 
             const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: prompt});
-            const newTemplateHtml = response.text;
+            const newTemplateHtml = cleanAiHtmlResponse(response.text);
             
             const newMap = userHeaders.reduce((acc, h) => {
                 acc[h] = h;
@@ -514,8 +683,6 @@ const App = () => {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.convertToHtml({ arrayBuffer });
         setTemplateHtml(result.value);
-        
-        // When a user uploads a template, assume it uses the default mapping
         setActiveMapping(PLACEHOLDER_TO_CSV_HEADER_MAP);
         addToast("Template carregado. Mapeamento de colunas redefinido para o padrão.", "success");
 
@@ -673,6 +840,23 @@ const App = () => {
         onClose: handleCloseTemplateGenModal,
         onGenerate: handleGenerateTemplate,
         isGenerating: isGeneratingTemplate,
+      }),
+      React.createElement(DataFormattingChoiceModal, {
+          isOpen: isFormatChoiceModalOpen,
+          onCancel: () => setIsFormatChoiceModalOpen(false),
+          onSkip: handleSkipFormatting,
+          onFormat: handleOpenWorkshop
+      }),
+      React.createElement(DataFormattingWorkshopModal, {
+          isOpen: isWorkshopModalOpen,
+          onCancel: () => setIsWorkshopModalOpen(false),
+          onApply: handleApplyFormatting,
+          onPreview: handlePreviewFormatting,
+          originalData: originalCsvData,
+          previewData: formattingPreviewData,
+          isProcessing: isFormattingPreview,
+          prompt: formattingPrompt,
+          setPrompt: setFormattingPrompt
       }),
       React.createElement("input", { type: "file", ref: fileInputRef, style: { display: 'none' }, onChange: handleCsvUpload, accept: ".csv" }),
       React.createElement("input", { type: "file", ref: templateInputRef, style: { display: 'none' }, onChange: handleTemplateUpload, accept: ".docx" }),
